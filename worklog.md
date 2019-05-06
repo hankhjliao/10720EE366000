@@ -4,6 +4,7 @@
 ## Week 11
 
 HL: Review Python
+Tony: "Learn the concept of git branch"
 
 ## Week 12
 
