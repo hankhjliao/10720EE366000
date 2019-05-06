@@ -3,6 +3,8 @@
 
 ## Week 11
 
+HL: Review Python
+
 ## Week 12
 
 ## Week 13
