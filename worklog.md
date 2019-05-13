@@ -7,7 +7,7 @@ HL: Review Python
 Tony: "Learn the concept of git branch"
 
 ## Week 12
-
+Tony: Find algorithm --> "Bicubic interpolation"
 ## Week 13
 
 ## Week 14
