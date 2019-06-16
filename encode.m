@@ -35,6 +35,7 @@ code=[];
 % num = number of zeros before this element
 % size = number of bit needed to represent element value (ceil,log2)
 % val = actual value of the element
+% (0,0) represent the array contains 0 to the end of 8*8 -1 matrix (no DC)
 num_zero=0;
 for i=2:64
     if i==64 && X(1,i)==0
