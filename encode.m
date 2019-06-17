@@ -1,5 +1,7 @@
 function [DC,X,code] = encode(x)
-
+% This function do two implement:
+% 1.zigzag scan
+% 2.RL encode
 X = zeros(1,64);
 
 % zigzag scan, X will be come 1*64 vector
