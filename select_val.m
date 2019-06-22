@@ -13,6 +13,6 @@ else
         AC(1)=AC(1)-1;
     else
         value = AC(3);
-        AC = AC(4:end);
+        AC(1:3) = [];
     end    
 end

@@ -16,7 +16,7 @@ for i =1:8
             % select_val function will output value and modified AC
             [value,AC] = select_val(AC);
             matrix(i,j)=value;
-        end   
+        end
     end
 end
 % convert the matrix into a vector
