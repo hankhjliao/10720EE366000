@@ -7,7 +7,7 @@ while ~isempty(coded_seq)
     codeword= codewords{m};
     lc= length(codeword);
     if lcs>=lc&codeword==coded_seq(1:lc)
-      symbol=symbols(m); found=1;  break;
+      symbol=symbols(2*m-1:2*m); found=1;  break;
     end
     if found==0, symbol='?'; end
   end 
