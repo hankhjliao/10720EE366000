@@ -1,12 +1,5 @@
-flake8==3.7.7
-  - entrypoints [required: >=0.3.0,<0.4.0, installed: 0.3]
-  - mccabe [required: >=0.6.0,<0.7.0, installed: 0.6.1]
-  - pycodestyle [required: >=2.5.0,<2.6.0, installed: 2.5.0]
-  - pyflakes [required: <2.2.0,>=2.1.0, installed: 2.1.1]
+numpy==1.16.4
 opencv-python==4.1.0.25
-  - numpy [required: >=1.14.5, installed: 1.16.4]
-pkg-resources==0.0.0
-PyQt5==5.12.2
-  - PyQt5-sip [required: >=4.19.14,<13, installed: 4.19.17]
+pyqt5-sip==4.19.17
+pyqt5==5.12.2
 scipy==1.3.0
-  - numpy [required: >=1.13.3, installed: 1.16.4]
