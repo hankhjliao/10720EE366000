@@ -35,7 +35,7 @@ RLcode=[];
 % and each cell contain three information
 % RLcode = [num,size,val]
 % num = number of zeros before this element
-% size = number of bits needed to represent element value (ceil,log2)
+% size = number of bits needed to represent element value (floor,log2)
 % val = actual value of the element
 % (0,0) represent the array contains 0 to the end of 8*8 -1 matrix (no DC)
 num_zero=0;
@@ -45,7 +45,7 @@ for i=2:64
     elseif X(1,i)==0
         num_zero=num_zero+1;
     else
-        size = ceil(log2(abs(X(1,i))))+1;
+        size = floor(log2(abs(X(1,i))))+1;
         RLcode =[RLcode,[num_zero,size,X(1,i)]];
         num_zero=0;
     end    

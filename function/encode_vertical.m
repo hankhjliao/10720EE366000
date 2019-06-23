@@ -24,7 +24,7 @@ for i=2:64
     elseif X(1,i)==0
         num_zero=num_zero+1;
     else
-        size = ceil(log2(abs(X(1,i))))+1;
+        size = floor(log2(abs(X(1,i))))+1;
         RLcode =[RLcode,[num_zero,size,X(1,i)]];
         num_zero=0;
     end    
