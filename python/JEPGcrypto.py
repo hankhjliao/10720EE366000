@@ -13,13 +13,6 @@ quatization_matrix = np.array([[16, 11, 10, 16,  24,  40,  51,  61],
                                [72, 92, 95, 98, 112, 100, 103,  99]])
 
 
-class FiletypeErrorException(Exception):
-    '''An exception raises when the filetype is wrong.'''
-    def __init__(self, filename):
-        Exception.__init__(self)
-        self.filename = filename
-
-
 def zig_zag(x):
     '''
     zig_zag(x) -> zig_zag_code\n\n
@@ -208,6 +201,12 @@ def decrypt(row, col, channel, DC_matrix, RLencode):
 
 
 if __name__ == "__main__":
+
+    class FiletypeErrorException(Exception):
+    '''An exception raises when the filetype is wrong.'''
+    def __init__(self, filename):
+        Exception.__init__(self)
+        self.filename = filename
 
     # get the file path
     if len(sys.argv) == 1:
