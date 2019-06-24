@@ -3,14 +3,16 @@ import cv2
 import sys
 import time
 
-quatization_matrix = np.array([[16, 11, 10, 16,  24,  40,  51,  61],
-                               [12, 12, 14, 19,  26,  58,  60,  55],
-                               [14, 13, 16, 24,  40,  57,  69,  56],
-                               [14, 17, 22, 29,  51,  87,  80,  62],
-                               [18, 22, 37, 56,  68, 109, 103,  77],
-                               [24, 35, 55, 64,  81, 104, 113,  92],
-                               [49, 64, 78, 87, 103, 121, 120, 101],
-                               [72, 92, 95, 98, 112, 100, 103,  99]])
+rnd_seed = 2128
+
+quatization_matrix = np.array([[1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 99]])
 
 
 def zig_zag(x):
@@ -141,14 +143,20 @@ def select_val(ac):
     return (value, ac)
 
 
-def encrypt(img):
+def encrypt(img, key_img):
     # TODO output bin file
     start = time.process_time_ns()
 
+    np.random.seed(rnd_seed)
+    noise = np.random.rand(8, 8)
+    noise[7, 7] = 0
+
     # colorspace transform (BGR2YCrCb)
     img_YUV = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb).astype('float')
+    key_img = cv2.cvtColor(key_img, cv2.COLOR_BGR2YCrCb).astype('float')
 
     (row, col, channel) = img_YUV.shape
+    key_img = cv2.resize(key_img, (col, row))
     RLencode = [[], [], []]
     DC_matrix = [[], [], []]
 
@@ -158,22 +166,33 @@ def encrypt(img):
     for i in range(row//8):
         for j in range(col//8):
             for k in range(channel):
-                downsample_img = img_YUV[8*i:8*i+8, 8*j:8*j+8, k]
-                img_dct = cv2.dct(downsample_img)
-                img_qua = np.round(img_dct / quatization_matrix)
-                zig_zag_code = zig_zag(img_qua)
-                RLcode = run_len_encode(zig_zag_code)
-                DC_matrix[k].append(zig_zag_code[0])
+                img_downsample = img_YUV[8*i:8*i+8, 8*j:8*j+8, k]
+                key_downsample = key_img[8*i:8*i+8, 8*j:8*j+8, k]
+                img_dct = cv2.dct(img_downsample)
+                key_dct = cv2.dct(key_downsample)
+                encrypt_dct = img_dct * 0.1 + key_dct * 0.9
+                img_qua = np.round(encrypt_dct / quatization_matrix + noise)
+                # zig_zag_code = zig_zag(img_qua)
+                img_qua = np.reshape(img_qua, 64)
+                RLcode = run_len_encode(img_qua)
+                DC_matrix[k].append(img_qua[0])
                 RLencode[k].append(RLcode)
 
     end = time.process_time_ns()
-    print("[INFO] Encode:", end - start, "ns")
+    print("[INFO] Encrypt:", end - start, "ns")
     return (row, col, channel, DC_matrix, RLencode)
 
 
-def decrypt(row, col, channel, DC_matrix, RLencode):
+def decrypt(row, col, channel, DC_matrix, RLencode, key_img):
     # TODO input bin file
     start = time.process_time_ns()
+
+    np.random.seed(rnd_seed)
+    noise = np.random.rand(8, 8)
+    noise[7, 7] = 0
+
+    key_img = cv2.cvtColor(key_img, cv2.COLOR_BGR2YCrCb).astype('float')
+    key_img = cv2.resize(key_img, (col, row))
 
     recover_img = np.zeros((row, col, channel))
 
@@ -184,15 +203,19 @@ def decrypt(row, col, channel, DC_matrix, RLencode):
             for j in range(col//8):
                 RLdecode = run_len_decode(
                     DC_cell[i*col//8+j], AC_cell[i*col//8+j])
-                decode_temp = zig_zag_inv(RLdecode)
-                decode_temp = decode_temp * quatization_matrix
-                recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct(decode_temp)
+                # decode_temp = zig_zag_inv(RLdecode)
+                key_downsample = key_img[8*i:8*i+8, 8*j:8*j+8, k]
+                key_dct = cv2.dct(key_downsample)
+                decode_temp = np.reshape(RLdecode, (8, 8))
+                decode_temp = (decode_temp - noise) * quatization_matrix
+                recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct(
+                    decode_temp - 0.9 * key_dct) * 10
 
     recover_img = recover_img.astype('uint8')
     recover_img = cv2.cvtColor(recover_img, cv2.COLOR_YCrCb2BGR)
 
     end = time.process_time_ns()
-    print("[INFO] Decode:", end - start, "ns")
+    print("[INFO] Decrypt:", end - start, "ns")
     return recover_img
 
 
@@ -210,19 +233,23 @@ if __name__ == "__main__":
         exit(1)
     else:
         filepath = sys.argv[1]
+        key_filepath = sys.argv[2]
 
     # try to open the file
     try:
         img = cv2.imread(filepath)
         if isinstance(img, type(None)):
             raise FiletypeErrorException(filepath)
+        key = cv2.imread(key_filepath)
+        if isinstance(key, type(None)):
+            raise FiletypeErrorException(key_filepath)
     except FiletypeErrorException as ex:
         print("[ERROR] Cannot open '{0}'. "
               "It might not be an image file.".format(ex.filename))
         exit(1)
 
-    (row, col, channel, DC_matrix, RLencode) = encrypt(img)
-    recover_img = decrypt(row, col, channel, DC_matrix, RLencode)
+    (row, col, channel, DC_matrix, RLencode) = encrypt(img, key)
+    recover_img = decrypt(row, col, channel, DC_matrix, RLencode, key)
 
     # show the images
     cv2.imshow("ori_img", img)
