@@ -203,10 +203,10 @@ def decrypt(row, col, channel, DC_matrix, RLencode):
 if __name__ == "__main__":
 
     class FiletypeErrorException(Exception):
-    '''An exception raises when the filetype is wrong.'''
-    def __init__(self, filename):
-        Exception.__init__(self)
-        self.filename = filename
+        '''An exception raises when the filetype is wrong.'''
+        def __init__(self, filename):
+            Exception.__init__(self)
+            self.filename = filename
 
     # get the file path
     if len(sys.argv) == 1:
