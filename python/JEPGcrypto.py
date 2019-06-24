@@ -208,8 +208,8 @@ def decrypt(row, col, channel, DC_matrix, RLencode, key_img):
                 key_dct = cv2.dct(key_downsample)
                 decode_temp = np.reshape(RLdecode, (8, 8))
                 decode_temp = (decode_temp - noise) * quatization_matrix
-                recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct(
-                    decode_temp - 0.9 * key_dct) * 10
+                recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct((
+                    decode_temp - 0.9 * key_dct) * 10)
 
     recover_img = recover_img.astype('uint8')
     recover_img = cv2.cvtColor(recover_img, cv2.COLOR_YCrCb2BGR)
