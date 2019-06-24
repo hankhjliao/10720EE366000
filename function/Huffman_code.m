@@ -8,7 +8,7 @@ if abs(sum(p)-1)>1e-6
   fprintf('\n The probabilities in p does not add up to 1!');
 end  
 M=length(p);  N=M-1; p=p(:); % Make p a column vector
-h={zero_one(1),zero_one(2)}
+h={zero_one(1),zero_one(2)};
 if M>2
   pp(:,1)=p;
   for n=1:N

@@ -1,6 +1,6 @@
 function coded_seq=source_coding(src,symbols,codewords)
 % Encode a data sequence src based on the given (symbols,codewords).
-no_of_symbols=length(symbols)/2
+no_of_symbols=length(symbols)/2;
 coded_seq=[];
 if length(codewords)<no_of_symbols
   error('The number of codewords must equal that of symbols');
