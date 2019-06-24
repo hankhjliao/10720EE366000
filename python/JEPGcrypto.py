@@ -103,14 +103,14 @@ def run_len_decode(dc, ac):
     matrix: The matrix before run length encode.\n
     '''
     matrix = np.zeros((8, 8))
-    for i in range(8):
-        for j in range(8):
+    for j in range(8):
+        for i in range(8):
             if i == 0 and j == 0:
                 matrix[0][0] = dc
             else:
                 (value, ac) = select_val(ac)
                 matrix[i][j] = value
-    matrix = np.reshape(matrix, 64)
+    matrix = np.reshape(matrix.T, 64)
     return matrix
 
 
@@ -149,9 +149,6 @@ def encrypt(img):
     img_YUV = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb).astype('float')
 
     (row, col, channel) = img_YUV.shape
-    # img_dct = np.zeros((row, col, channel))
-    # img_qua = np.zeros((row, col, channel))
-    # img_encode = np.zeros((row, col, channel))
     RLencode = [[], [], []]
     DC_matrix = [[], [], []]
 
@@ -178,8 +175,6 @@ def decrypt(row, col, channel, DC_matrix, RLencode):
     # TODO input bin file
     start = time.process_time_ns()
 
-    # recover_decode = np.zeros((row, col, channel))
-    # recover_quantization = np.zeros((row, col, channel))
     recover_img = np.zeros((row, col, channel))
 
     for k in range(channel):
@@ -187,7 +182,8 @@ def decrypt(row, col, channel, DC_matrix, RLencode):
         AC_cell = np.array(RLencode[k])
         for i in range(row//8):
             for j in range(col//8):
-                RLdecode = run_len_decode(DC_cell[i*col//8+j], AC_cell[i])
+                RLdecode = run_len_decode(
+                    DC_cell[i*col//8+j], AC_cell[i*col//8+j])
                 decode_temp = zig_zag_inv(RLdecode)
                 decode_temp = decode_temp * quatization_matrix
                 recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct(decode_temp)
