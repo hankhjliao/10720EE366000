@@ -294,8 +294,7 @@ def decrypt(row, DC_matrix, RLencode, RLdata, key_img):
                 decode_temp = zig_zag_inv(RLdecode)
                 key_downsample = key_img[8*i:8*i+8, 8*j:8*j+8, k]
                 key_dct = cv2.dct(key_downsample)
-                decode_temp = np.round(decode_temp - noise)
-                decode_temp = decode_temp * quatization_matrix
+                decode_temp = (decode_temp - noise) * quatization_matrix
                 recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct((
                     decode_temp - 0.9 * key_dct) * 10)
 
