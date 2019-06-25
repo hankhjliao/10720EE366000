@@ -189,9 +189,8 @@ def encrypt(img, key_img):
                 encrypt_dct = img_dct * 0.1 + key_dct * 0.9
                 img_qua = np.round(encrypt_dct / quatization_matrix + noise)
                 zig_zag_code = zig_zag(img_qua)
-                # img_qua = np.reshape(img_qua, 64)
                 RLcode, data = run_len_encode(zig_zag_code)
-                DC_matrix[k].append(zig_zag_code[0])
+                DC_matrix[k].append(zig_zag_code[0].astype('uint'))
                 RLencode[k].append(RLcode)
                 RLdata[k].append(data)
 
@@ -228,7 +227,6 @@ def decrypt(row, DC_matrix, RLencode, RLdata, key_img):
                 decode_temp = zig_zag_inv(RLdecode)
                 key_downsample = key_img[8*i:8*i+8, 8*j:8*j+8, k]
                 key_dct = cv2.dct(key_downsample)
-                # decode_temp = np.reshape(RLdecode, (8, 8))
                 decode_temp = (decode_temp - noise) * quatization_matrix
                 recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct((
                     decode_temp - 0.9 * key_dct) * 10)
@@ -271,6 +269,8 @@ if __name__ == "__main__":
         exit(1)
 
     (row, DC_matrix, RLencode, RLdata) = encrypt(img, key)
+    JEPGIO.write_to_binstr("./test", row, DC_matrix, RLencode, RLdata)
+    (row, DC_matrix, RLencode, RLdata) = JEPGIO.read_image_file("./test")
     recover_img = decrypt(row, DC_matrix, RLencode, RLdata, key)
 
     # show the images
