@@ -75,6 +75,10 @@ class Main(QWidget):
         if fileName:
             if ext == 'Binary File(*.bin)':
                 self.bin = JEPGIO.read_image_file(fileName)
+                row, DC_matrix, RLencode, RLdata = self.bin
+                self.resultImg = JEPGcrypto.decode(row, DC_matrix, RLencode,
+                                                   RLdata)
+                self.updateImage('decode')
                 self.loadButton.setEnabled(True)
                 self.encryptButton.setEnabled(False)
                 self.decryptButton.setEnabled(True)
@@ -134,7 +138,8 @@ class Main(QWidget):
                 exit(1)
             self.encryptMessage = JEPGcrypto.encrypt(img, key)
             row, DC_matrix, RLencode, RLdata = self.encryptMessage
-            self.resultImg = JEPGcrypto.decode(row, DC_matrix, RLencode, RLdata)
+            self.resultImg = JEPGcrypto.decode(row, DC_matrix, RLencode,
+                                               RLdata)
             self.updateImage('decode')
             self.loadButton.setEnabled(True)
             self.encryptButton.setEnabled(True)
@@ -160,7 +165,7 @@ class Main(QWidget):
                 exit(1)
             row, DC_matrix, RLencode, RLdata = self.bin
             self.decryptImg = JEPGcrypto.decrypt(row, DC_matrix, RLencode,
-                                                RLdata, key)
+                                                 RLdata, key)
             self.encryptButton.setEnabled(False)
             self.decryptButton.setEnabled(True)
             self.saveButton.setEnabled(True)
