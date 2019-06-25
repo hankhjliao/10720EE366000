@@ -5,7 +5,8 @@ import huffman
 import time
 
 uint_to_binstr = (lambda number, size: bin(number)[2:][-size:].zfill(size))
-binstr_flip = (lambda binstr: ''.join(map(lambda c: '0' if c == '1' else '1', binstr)))
+binstr_flip = (lambda binstr: ''.join(
+               map(lambda c: '0' if c == '1' else '1', binstr)))
 flatten = (lambda lst: [item for sublist in lst for item in sublist])
 
 
@@ -111,7 +112,6 @@ class JPEGFileReader:
 
     AC_CODE_LENGTH_BITS = 8
     RUN_LENGTH_BITS = 8
-    # SIZE_BITS = 4
 
     def __init__(self, filepath):
         try:
@@ -184,7 +184,8 @@ class JPEGFileReader:
         return self.__int2(self.__read_str(size))
 
     def __read_str(self, length):
-        output = self.__string[self.__string_index:self.__string_index + length]
+        output = self.__string[self.__string_index:
+                               self.__string_index + length]
         self.__string_index += length
         return output
 

@@ -68,17 +68,14 @@ def zig_zag_inv(x):
 
 def run_len_encode(x):
     '''
-    run_len_encode(x) -> [num, size, val]\n\n
+    run_len_encode(x) -> [RLcode, RLdata]\n\n
     Run length encode. This method encodes all AC term, and each cell contain
     three information.\n
-    (0,0) represents the array contains 0 to the end of `8*8 - 1` matrix
-    (without DC).\n
     ## Parameter
     x: The zig_zag_code.\n
     ## Returns
-    num: Number of zeros before this nonzero element.\n
-    size: Number of bits needed to represent element value.\n
-    val: Actual value of the element.\n
+    RLcode: Run length encode.\n
+    RLdata: The data after zero.\n
     '''
     RLcode = []
     RLdata = []
@@ -108,14 +105,15 @@ def run_len_encode(x):
 
 def run_len_decode(dc, RLencode, RLdata):
     '''
-    run_len_decode(x) -> matrix\n\n
+    run_len_decode(dc, RLencode, RLdata) -> vector\n\n
     Run length decode. This method decodes all the terms using dc and ac
     terms.\n
     ## Parameters
     dc: The DC term.\n
-    ac: The AC term array.\n
+    RLcode: Run length encode.\n
+    RLdata: The data after zero.\n
     ## Return
-    matrix: The matrix before run length encode.\n
+    vector: The vector before run length encode.\n
     '''
     matrix = np.zeros((8, 8))
     for j in range(8):
@@ -134,18 +132,19 @@ def run_len_decode(dc, RLencode, RLdata):
 
 def select_val(RLencode, RLdata):
     '''
-    select_val(RLencode) -> [value, RLencode, RLdata]\n\n
+    select_val(RLencode, RLdata) -> [value, RLencode, RLdata]\n\n
     This function select the value to fill back the matrix.
     There are three case:
-    1. (0,0):   All value should be 0.
-    2. (X,Y,Z): There are X zeros before Z.
-    3. (0,Y,Z): Fill Z back.
-
+    1. (0, 0, 0):   All value should be 0.
+    2. (X, Y, Z): There are X zeros before Z.
+    3. (0, Y, Z): Fill Z back.
     ## Parameter
-    ac: The AC term array.\n
+    RLcode: Run length encode.\n
+    RLdata: The data after zero.\n
     ## Returns
     value: The value to fill back the matrix.\n
-    ac: The remain AC term array.\n
+    RLcode: The remain part of run length encode.\n
+    RLdata: The remain part of the data after zero.\n
     '''
     if RLencode[0] >= 16:
         value = 0
@@ -158,9 +157,22 @@ def select_val(RLencode, RLdata):
 
 
 def encrypt(img, key_img):
-    # TODO output bin file
+    '''
+    encrypt(img, key_img) -> [row, DC_matrix, RLencode, RLdata]\n\n
+    Encrypt the image.
+    ## Parameter
+    img: The orignal image\n
+    key_img: The key image.\n
+    ## Returns
+    row: The row of the image.\n
+    DC_matrix: The DC terms of the image.\n
+    RLencode: Run length encode.\n
+    RLdata: The data part of the Run length encode.\n
+    '''
+    # calculate time
     start = time.process_time_ns()
 
+    # noise
     np.random.seed(rnd_seed)
     noise = np.random.rand(8, 8)
     noise[7, 7] = 0
@@ -200,12 +212,25 @@ def encrypt(img, key_img):
 
 
 def decrypt(row, DC_matrix, RLencode, RLdata, key_img):
-    # TODO input bin file
+    '''
+    decrypt(row, DC_matrix, RLencode, RLdata, key_img) -> recover_img\n\n
+    Decrypt the image.
+    ## Parameter
+    row: The row of the image.\n
+    DC_matrix: The DC terms of the image.\n
+    RLencode: Run length encode.\n
+    RLdata: The data part of the Run length encode.\n
+    key_img: The key image.\n
+    ## Returns
+    recover_img: The decrypt image\n
+    '''
+    # calculate time
     start = time.process_time_ns()
 
     col = len(DC_matrix[0]) // (row // 8) * 8
     channel = 3
 
+    # noise
     np.random.seed(rnd_seed)
     noise = np.random.rand(8, 8)
     noise[7, 7] = 0
