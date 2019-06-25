@@ -48,6 +48,7 @@ def write_to_binstr(filepath, row, dc, ac, RLdata):
     col = len(dc[0]) // (row // 8) * 8
 
     out = ''
+    out += uint_to_binstr(688380, 64)
 
     for table_name in ['DC0', 'DC1', 'DC2', 'AC0', 'AC1', 'AC2']:
         # 16 bits for 'table_size'
@@ -91,10 +92,10 @@ def write_to_binstr(filepath, row, dc, ac, RLdata):
                 for l in range(len(ac[k][i*col//8+j])):
                     out += ac_table[ac[k][i*col//8+j][l]]
                     out += int_to_binstr(RLdata[k][i*col//8+j][l])
-    if len(out) % 8 != 0:
-        out += '0' * (8 - (len(out) % 8))
-    for i in range(len(out)//8):
-        f.write(int(out[i*8:i*8+8], 2).to_bytes(1, 'big'))
+    if len(out) % 64 != 0:
+        out += '0' * (64 - (len(out) % 64))
+    for i in range(len(out)//64):
+        f.write(int(out[i*64:i*64+64], 2).to_bytes(8, 'big'))
     f.close()
 
     end = time.process_time_ns()
@@ -120,13 +121,17 @@ class JPEGFileReader:
                     "No such directory: {}".format(
                         os.path.dirname(filepath))) from e
         self.__string = ''
-        byte = f.read(1)
+        byte = f.read(8)
+        if int.from_bytes(byte, 'big') != 688380:
+            print('[ERROR] Invalid binary file.')
+            exit(1)
+        byte = f.read(8)
         while byte != b"":
             b = bin(int.from_bytes(byte, 'big'))[2:]
-            if len(b) % 8 != 0:
-                b = '0' * (8 - (len(b) % 8)) + b
+            if len(b) % 64 != 0:
+                b = '0' * (64 - (len(b) % 64)) + b
             self.__string += b
-            byte = f.read(1)
+            byte = f.read(8)
         self.__string_index = 0
 
     def read_int(self, size):

@@ -1,10 +1,9 @@
-import ast
 import base64
 import cv2
 import JEPGcrypto
-import numpy as np
+import JEPGIO
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QFileDialog
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt
 import sys
 
@@ -69,11 +68,10 @@ class Main(QWidget):
     def loadImage(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, ext = QFileDialog.getOpenFileName(self, "Load", "", "TIFF File(*.tiff);;Text File(*.txt)", options=options)
+        fileName, ext = QFileDialog.getOpenFileName(self, "Load", "", "TIFF File(*.tiff);;Binary File(*.bin)", options=options)
         if fileName:
-            if ext == 'Text File(*.txt)':
-                with open(fileName, 'r+') as data:
-                    self.text = data.read()
+            if ext == 'Binary File(*.bin)':
+                self.bin = JEPGIO.read_image_file(fileName)
                 self.loadButton.setEnabled(True)
                 self.encryptButton.setEnabled(False)
                 self.decryptButton.setEnabled(True)
@@ -88,16 +86,21 @@ class Main(QWidget):
                           "It might not be an image file.".format(ex.filename))
                     exit(1)
                 self.imagePath = fileName
-                self.updateImage()
+                self.updateImage('file')
                 self.loadButton.setEnabled(True)
                 self.encryptButton.setEnabled(True)
                 self.decryptButton.setEnabled(False)
                 self.saveButton.setEnabled(False)
         print("[INFO] Opened!")
 
-    def updateImage(self):
-        self.label.setPixmap(QPixmap(self.imagePath).scaled(500, 500, Qt.KeepAspectRatio))
-        # print(QPixmap(self.imagePath).size())
+    def updateImage(self, src):
+        if src == 'file':
+            self.label.setPixmap(QPixmap(self.imagePath).scaled(500, 500, Qt.KeepAspectRatio))
+        else:
+            rgbImage = cv2.cvtColor(self.resultImg, cv2.COLOR_BGR2RGB)
+            convertToQtFormat = QImage(rgbImage.data, rgbImage.shape[1],
+                                       rgbImage.shape[0], QImage.Format_RGB888)
+            self.label.setPixmap(QPixmap.fromImage(convertToQtFormat).scaled(500, 500, Qt.KeepAspectRatio))
 
     def encryptImage(self):
         options = QFileDialog.Options()
@@ -137,32 +140,26 @@ class Main(QWidget):
                 print("[ERROR] Cannot open '{0}'. "
                       "It might not be an image file.".format(ex.filename))
                 exit(1)
-            self.text = self.text.split(':')
-            row = int(self.text[0])
-            DC_matrix = np.array(ast.literal_eval(self.text[1]))
-            RLencode = np.array(ast.literal_eval(self.text[2]))
-            RLdata = np.array(ast.literal_eval(self.text[3]))
+            row, DC_matrix, RLencode, RLdata = self.bin
             self.resultImg = JEPGcrypto.decrypt(row, DC_matrix, RLencode, RLdata, key)
             self.encryptButton.setEnabled(False)
             self.decryptButton.setEnabled(True)
             self.saveButton.setEnabled(True)
+            self.updateImage('decrypt')
         print("[INFO] Decrypted!")
 
     def saveImage(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         if self.encryptButton.isEnabled():
-            fileName, _ = QFileDialog.getSaveFileName(self, "Save", "", "Text File(*.txt)", options=options)
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save Binary File", "", "Binary File(*.bin)", options=options)
             if fileName:
-                if fileName[-4:] != '.txt':
-                    fileName = fileName + '.txt'
-                with open(fileName + '.txt', 'w') as output:
-                    output.write(str(self.encryptMessage[0])+':'+
-                                 str(self.encryptMessage[1])+':'+
-                                 str(self.encryptMessage[2])+':'+
-                                 str(self.encryptMessage[3]))
+                if fileName[-4:] != '.bin':
+                    fileName = fileName + '.bin'
+                row, DC_matrix, RLencode, RLdata = self.encryptMessage
+                JEPGIO.write_to_binstr(fileName, row, DC_matrix, RLencode, RLdata)
         elif self.decryptButton.isEnabled():
-            fileName, _ = QFileDialog.getSaveFileName(self, "Save", "", "TIFF File(*.tiff)", options=options)
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "TIFF File(*.tiff)", options=options)
             if fileName:
                 if fileName[-5:] != '.tiff':
                     fileName = fileName + '.tiff'
