@@ -34,7 +34,7 @@ def huffman_table(dc, ac):
 
 def write_to_binstr(filepath, row, dc, ac, RLdata):
     try:
-        f = open(filepath, 'w')
+        f = open(filepath, 'wb')
     except FileNotFoundError as e:
         raise FileNotFoundError(
                 "No such directory: {}".format(
@@ -44,23 +44,25 @@ def write_to_binstr(filepath, row, dc, ac, RLdata):
 
     col = len(dc[0]) // (row // 8) * 8
 
+    out = ''
+
     for table_name in ['DC0', 'DC1', 'DC2', 'AC0', 'AC1', 'AC2']:
         # 16 bits for 'table_size'
-        f.write(uint_to_binstr(len(tables[table_name]), 16))
+        out += uint_to_binstr(len(tables[table_name]), 16)
 
         for key, value in tables[table_name].items():
             if table_name in {'DC0', 'DC1', 'DC2'}:
-                f.write(uint_to_binstr(key, 16))
-                f.write(uint_to_binstr(len(value), 16))
-                f.write(value)
+                out += uint_to_binstr(key, 16)
+                out += uint_to_binstr(len(value), 16)
+                out += value
             else:
-                f.write(uint_to_binstr(key, 8))
-                f.write(uint_to_binstr(len(value), 8))
-                f.write(value)
+                out += uint_to_binstr(key, 8)
+                out += uint_to_binstr(len(value), 8)
+                out += value
 
     # 32 bits for 'row' and 'col'
-    f.write(uint_to_binstr(row//8, 32))
-    f.write(uint_to_binstr(col//8, 32))
+    out += uint_to_binstr(row//8, 32)
+    out += uint_to_binstr(col//8, 32)
 
     # DC terms
     for k in range(3):
@@ -71,7 +73,7 @@ def write_to_binstr(filepath, row, dc, ac, RLdata):
         else:
             dc_table = tables['DC2']
         for i in range(len(dc[0])):
-            f.write(dc_table[dc[k][i]])
+            out += dc_table[dc[k][i]]
 
     # AC terms
     for k in range(3):
@@ -84,8 +86,12 @@ def write_to_binstr(filepath, row, dc, ac, RLdata):
         for i in range(row//8):
             for j in range(col//8):
                 for l in range(len(ac[k][i*col//8+j])):
-                    f.write(ac_table[ac[k][i*col//8+j][l]])
-                    f.write(int_to_binstr(RLdata[k][i*col//8+j][l]))
+                    out += ac_table[ac[k][i*col//8+j][l]]
+                    out += int_to_binstr(RLdata[k][i*col//8+j][l])
+    if len(out) % 8 != 0:
+        out += '0' * (8 - (len(out) % 8))
+    for i in range(len(out)//8):
+        f.write(int(out[i*8:i*8+8], 2).to_bytes(1, 'big'))
     f.close()
 
 
@@ -101,7 +107,21 @@ class JPEGFileReader:
     # SIZE_BITS = 4
 
     def __init__(self, filepath):
-        self.__file = open(filepath, 'r')
+        try:
+            f = open(filepath, 'rb')
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                    "No such directory: {}".format(
+                        os.path.dirname(filepath))) from e
+        self.__string = ''
+        byte = f.read(1)
+        while byte != b"":
+            b = bin(int.from_bytes(byte, 'big'))[2:]
+            if len(b) % 8 != 0:
+                b = '0' * (8 - (len(b) % 8)) + b
+            self.__string += b
+            byte = f.read(1)
+        self.__string_index = 0
 
     def read_int(self, size):
         if size == 0:
@@ -153,7 +173,9 @@ class JPEGFileReader:
         return self.__int2(self.__read_str(size))
 
     def __read_str(self, length):
-        return self.__file.read(length)
+        output = self.__string[self.__string_index:self.__string_index + length]
+        self.__string_index += length
+        return output
 
     def __read_char(self):
         return self.__read_str(1)
