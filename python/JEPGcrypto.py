@@ -1,8 +1,8 @@
-import numpy as np
+import argparse
 import cv2
-import sys
-import time
 import JEPGIO
+import numpy as np
+import time
 
 rnd_seed = 2128
 
@@ -315,37 +315,61 @@ if __name__ == "__main__":
             Exception.__init__(self)
             self.filename = filename
 
-    # get the file path
-    if len(sys.argv) == 1:
-        print("[ERROR] Please input the path to the file.")
-        exit(1)
+    parser = argparse.ArgumentParser(description='Encrypt and decrypt the \
+                                                  image.')
+    parser.add_argument('filepath', metavar='filepath', type=str,
+                        help='the path to the orignal image or the encrypted \
+                              file.')
+    parser.add_argument('key_filepath', type=str,
+                        help='the path to the key image')
+    parser.add_argument('-d', '--decrypt_mode', action="store_true",
+                        help='Decrypt mode.')
+    parser.add_argument('-o', '--output_path', type=str, default='',
+                        help='Output file path')
+    args = parser.parse_args()
+
+    filepath = args.filepath
+    key_filepath = args.key_filepath
+
+    if args.decrypt_mode:
+        # try to open the file
+        try:
+            key = cv2.imread(key_filepath)
+            if isinstance(key, type(None)):
+                raise FiletypeErrorException(key_filepath)
+        except FiletypeErrorException as ex:
+            print("[ERROR] Cannot open '{0}'. "
+                  "It might not be an image file.".format(ex.filename))
+            exit(1)
+        (row, DC_matrix, RLencode, RLdata) = JEPGIO.read_image_file(filepath)
+        recover_img = decrypt(row, DC_matrix, RLencode, RLdata, key)
+        cv2.imshow("recover_img", recover_img)
+        if args.output_path != '':
+            cv2.imwrite(args.output_path, recover_img)
     else:
-        filepath = sys.argv[1]
-        key_filepath = sys.argv[2]
+        # try to open the file
+        try:
+            img = cv2.imread(filepath)
+            if isinstance(img, type(None)):
+                raise FiletypeErrorException(filepath)
+            key = cv2.imread(key_filepath)
+            if isinstance(key, type(None)):
+                raise FiletypeErrorException(key_filepath)
+        except FiletypeErrorException as ex:
+            print("[ERROR] Cannot open '{0}'. "
+                  "It might not be an image file.".format(ex.filename))
+            exit(1)
 
-    # try to open the file
-    try:
-        img = cv2.imread(filepath)
-        if isinstance(img, type(None)):
-            raise FiletypeErrorException(filepath)
-        key = cv2.imread(key_filepath)
-        if isinstance(key, type(None)):
-            raise FiletypeErrorException(key_filepath)
-    except FiletypeErrorException as ex:
-        print("[ERROR] Cannot open '{0}'. "
-              "It might not be an image file.".format(ex.filename))
-        exit(1)
-
-    (row, DC_matrix, RLencode, RLdata) = encrypt(img, key)
-    JEPGIO.write_to_binstr("./test", row, DC_matrix, RLencode, RLdata)
-    (row, DC_matrix, RLencode, RLdata) = JEPGIO.read_image_file("./test")
-    result_img = decode(row, DC_matrix, RLencode, RLdata)
-    recover_img = decrypt(row, DC_matrix, RLencode, RLdata, key)
+        (row, DC_matrix, RLencode, RLdata) = encrypt(img, key)
+        result_img = decode(row, DC_matrix, RLencode, RLdata)
+        cv2.imshow("orignal_img", img)
+        cv2.imshow("result_img", result_img)
+        if args.output_path != '':
+            JEPGIO.write_to_binstr(args.output_path, row, DC_matrix, RLencode,
+                                   RLdata)
 
     # show the images
-    cv2.imshow("ori_img", img)
-    cv2.imshow("result_img", result_img)
-    cv2.imshow("recover_img", recover_img)
+    cv2.imshow("key_img", key)
     while True:
         # press 'q' to quit
         if cv2.waitKey(100) & 0xFF == ord('q'):
