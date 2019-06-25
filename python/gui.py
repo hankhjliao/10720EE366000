@@ -94,13 +94,19 @@ class Main(QWidget):
                 self.encryptButton.setEnabled(True)
                 self.decryptButton.setEnabled(False)
                 self.saveButton.setEnabled(False)
-        print("[INFO] Opened!")
+        print("[INFO] Opened:", fileName)
 
     def updateImage(self, src):
         if src == 'file':
             self.label.setPixmap(QPixmap(self.imagePath).scaled(500, 500,
                                  Qt.KeepAspectRatio))
-        else:
+        elif src == 'decrypt':
+            rgbImage = cv2.cvtColor(self.decryptImg, cv2.COLOR_BGR2RGB)
+            convertToQtFormat = QImage(rgbImage.data, rgbImage.shape[1],
+                                       rgbImage.shape[0], QImage.Format_RGB888)
+            self.label.setPixmap(QPixmap.fromImage(convertToQtFormat).scaled(
+                                 500, 500, Qt.KeepAspectRatio))
+        elif src == 'decode':
             rgbImage = cv2.cvtColor(self.resultImg, cv2.COLOR_BGR2RGB)
             convertToQtFormat = QImage(rgbImage.data, rgbImage.shape[1],
                                        rgbImage.shape[0], QImage.Format_RGB888)
@@ -127,11 +133,14 @@ class Main(QWidget):
                       "It might not be an image file.".format(ex.filename))
                 exit(1)
             self.encryptMessage = JEPGcrypto.encrypt(img, key)
+            row, DC_matrix, RLencode, RLdata = self.encryptMessage
+            self.resultImg = JEPGcrypto.decode(row, DC_matrix, RLencode, RLdata)
+            self.updateImage('decode')
             self.loadButton.setEnabled(True)
             self.encryptButton.setEnabled(True)
             self.decryptButton.setEnabled(False)
             self.saveButton.setEnabled(True)
-        print("[INFO] Encrypted!")
+        print("[INFO] Encrypted using", fileName)
 
     def decryptImage(self):
         options = QFileDialog.Options()
@@ -150,13 +159,13 @@ class Main(QWidget):
                       "It might not be an image file.".format(ex.filename))
                 exit(1)
             row, DC_matrix, RLencode, RLdata = self.bin
-            self.resultImg = JEPGcrypto.decrypt(row, DC_matrix, RLencode,
+            self.decryptImg = JEPGcrypto.decrypt(row, DC_matrix, RLencode,
                                                 RLdata, key)
             self.encryptButton.setEnabled(False)
             self.decryptButton.setEnabled(True)
             self.saveButton.setEnabled(True)
             self.updateImage('decrypt')
-        print("[INFO] Decrypted!")
+        print("[INFO] Decrypted using", fileName)
 
     def saveImage(self):
         options = QFileDialog.Options()
@@ -180,9 +189,9 @@ class Main(QWidget):
             if fileName:
                 if fileName[-5:] != '.tiff':
                     fileName = fileName + '.tiff'
-                cv2.imwrite(fileName, self.resultImg)
+                cv2.imwrite(fileName, self.decryptImg)
 
-        print("[INFO] Saved!")
+        print("[INFO] Saved:", fileName)
 
 
 if __name__ == "__main__":
