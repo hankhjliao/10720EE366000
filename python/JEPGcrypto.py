@@ -80,20 +80,32 @@ def run_len_encode(x):
     val: Actual value of the element.\n
     '''
     RLcode = []
+    RLdata = []
     num_zero = 0
     for i in range(1, 64):
         if i == 63 and x[i] == 0:
-            RLcode.append([0, 0])
+            RLcode.append(0)
+            RLdata.append(0)
         elif x[i] == 0:
             num_zero += 1
+            if num_zero == 15:
+                if np.count_nonzero(x[i:]) == 0:
+                    RLcode.append(0)
+                    RLdata.append(0)
+                    return (RLcode, RLdata)
+                else:
+                    RLcode.append(num_zero * 16 + 1)
+                    RLdata.append(0)
+                    num_zero = 0
         else:
             size = np.floor(np.log2(np.abs(x[i]))) + 1
-            RLcode.append([num_zero, size, x[i]])
+            RLcode.append(num_zero * 16 + size)
+            RLdata.append(x[i])
             num_zero = 0
-    return RLcode
+    return (RLcode, RLdata)
 
 
-def run_len_decode(dc, ac):
+def run_len_decode(dc, RLencode, RLdata):
     '''
     run_len_decode(x) -> matrix\n\n
     Run length decode. This method decodes all the terms using dc and ac
@@ -110,15 +122,15 @@ def run_len_decode(dc, ac):
             if i == 0 and j == 0:
                 matrix[0][0] = dc
             else:
-                (value, ac) = select_val(ac)
+                (value, RLencode, RLdata) = select_val(RLencode, RLdata)
                 matrix[i][j] = value
     matrix = np.reshape(matrix.T, 64)
     return matrix
 
 
-def select_val(ac):
+def select_val(RLencode, RLdata):
     '''
-    select_val(ac) -> [value, ac]\n\n
+    select_val(RLencode) -> [value, RLencode, RLdata]\n\n
     This function select the value to fill back the matrix.
     There are three case:
     1. (0,0):   All value should be 0.
@@ -131,16 +143,17 @@ def select_val(ac):
     value: The value to fill back the matrix.\n
     ac: The remain AC term array.\n
     '''
-    if ac[0][0] == 0 and ac[0][1] == 0:
+    if RLencode[0] == 0:
         value = 0
     else:
-        if ac[0][0] > 0:
+        if RLencode[0] >= 16:
             value = 0
-            ac[0][0] = ac[0][0] - 1
+            RLencode[0] = RLencode[0] - 16
         else:
-            value = ac[0][2]
-            ac = ac[1:]
-    return (value, ac)
+            value = RLdata[0]
+            RLdata = RLdata[1:]
+            RLencode = RLencode[1:]
+    return (value, RLencode, RLdata)
 
 
 def encrypt(img, key_img):
@@ -156,11 +169,13 @@ def encrypt(img, key_img):
     key_img = cv2.cvtColor(key_img, cv2.COLOR_BGR2YCrCb).astype('float')
 
     (row, col, channel) = img_YUV.shape
+    row, col = row // 8 * 8, col // 8 * 8
+    img_YUV = cv2.resize(img_YUV, (col, row))
     key_img = cv2.resize(key_img, (col, row))
-    RLencode = [[], [], []]
-    DC_matrix = [[], [], []]
 
-    # key_YUV = cv2.resize(key_YUV, (row, col))
+    RLencode = [[], [], []]
+    RLdata = [[], [], []]
+    DC_matrix = [[], [], []]
 
     # slice each part into 8*8 matrix, do dct,quantization,encode
     for i in range(row//8):
@@ -174,18 +189,22 @@ def encrypt(img, key_img):
                 img_qua = np.round(encrypt_dct / quatization_matrix + noise)
                 # zig_zag_code = zig_zag(img_qua)
                 img_qua = np.reshape(img_qua, 64)
-                RLcode = run_len_encode(img_qua)
+                RLcode, data = run_len_encode(img_qua)
                 DC_matrix[k].append(img_qua[0])
                 RLencode[k].append(RLcode)
+                RLdata[k].append(data)
 
     end = time.process_time_ns()
     print("[INFO] Encrypt:", end - start, "ns")
-    return (row, col, channel, DC_matrix, RLencode)
+    return (row, DC_matrix, RLencode, RLdata)
 
 
-def decrypt(row, col, channel, DC_matrix, RLencode, key_img):
+def decrypt(row, DC_matrix, RLencode, RLdata, key_img):
     # TODO input bin file
     start = time.process_time_ns()
+
+    col = len(DC_matrix[0]) // (row // 8) * 8
+    channel = 3
 
     np.random.seed(rnd_seed)
     noise = np.random.rand(8, 8)
@@ -199,10 +218,12 @@ def decrypt(row, col, channel, DC_matrix, RLencode, key_img):
     for k in range(channel):
         DC_cell = np.array(DC_matrix[k])
         AC_cell = np.array(RLencode[k])
+        RLdata_cell = np.array(RLdata[k])
         for i in range(row//8):
             for j in range(col//8):
                 RLdecode = run_len_decode(
-                    DC_cell[i*col//8+j], AC_cell[i*col//8+j])
+                    DC_cell[i*col//8+j], AC_cell[i*col//8+j],
+                    RLdata_cell[i*col//8+j])
                 # decode_temp = zig_zag_inv(RLdecode)
                 key_downsample = key_img[8*i:8*i+8, 8*j:8*j+8, k]
                 key_dct = cv2.dct(key_downsample)
@@ -248,8 +269,8 @@ if __name__ == "__main__":
               "It might not be an image file.".format(ex.filename))
         exit(1)
 
-    (row, col, channel, DC_matrix, RLencode) = encrypt(img, key)
-    recover_img = decrypt(row, col, channel, DC_matrix, RLencode, key)
+    (row, DC_matrix, RLencode, RLdata) = encrypt(img, key)
+    recover_img = decrypt(row, DC_matrix, RLencode, RLdata, key)
 
     # show the images
     cv2.imshow("ori_img", img)
