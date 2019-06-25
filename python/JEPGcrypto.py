@@ -210,6 +210,47 @@ def encrypt(img, key_img):
     print("[INFO] Encrypt:", end - start, "ns")
     return (row, DC_matrix, RLencode, RLdata)
 
+def decode(row, DC_matrix, RLencode, RLdata):
+    '''
+    decode(row, DC_matrix, RLencode, RLdata, key_img) -> result_img\n\n
+    Decode the image.
+    ## Parameter
+    row: The row of the image.\n
+    DC_matrix: The DC terms of the image.\n
+    RLencode: Run length encode.\n
+    RLdata: The data part of the Run length encode.\n
+    key_img: The key image.\n
+    ## Returns
+    result_img: The decoded image\n
+    '''
+    # calculate time
+    start = time.process_time_ns()
+
+    col = len(DC_matrix[0]) // (row // 8) * 8
+    channel = 3
+
+    result_img = np.zeros((row, col, channel))
+
+    for k in range(channel):
+        DC_cell = np.array(DC_matrix[k])
+        AC_cell = np.array(RLencode[k])
+        RLdata_cell = np.array(RLdata[k])
+        for i in range(row//8):
+            for j in range(col//8):
+                RLdecode = run_len_decode(
+                    DC_cell[i*col//8+j], AC_cell[i*col//8+j],
+                    RLdata_cell[i*col//8+j])
+                decode_temp = zig_zag_inv(RLdecode)
+                decode_temp = decode_temp * quatization_matrix
+                result_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct(decode_temp)
+
+    result_img = result_img.astype('uint8')
+    result_img = cv2.cvtColor(result_img, cv2.COLOR_YCrCb2BGR)
+
+    end = time.process_time_ns()
+    print("[INFO] Decode:", end - start, "ns")
+    return result_img
+
 
 def decrypt(row, DC_matrix, RLencode, RLdata, key_img):
     '''
@@ -296,10 +337,12 @@ if __name__ == "__main__":
     (row, DC_matrix, RLencode, RLdata) = encrypt(img, key)
     JEPGIO.write_to_binstr("./test", row, DC_matrix, RLencode, RLdata)
     (row, DC_matrix, RLencode, RLdata) = JEPGIO.read_image_file("./test")
+    result_img = decode(row, DC_matrix, RLencode, RLdata)
     recover_img = decrypt(row, DC_matrix, RLencode, RLdata, key)
 
     # show the images
     cv2.imshow("ori_img", img)
+    cv2.imshow("result_img", result_img)
     cv2.imshow("recover_img", recover_img)
     while True:
         # press 'q' to quit
