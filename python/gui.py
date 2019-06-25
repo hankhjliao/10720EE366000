@@ -1,8 +1,19 @@
-import sys,tty,termios
+import ast
 import base64
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QInputDialog, QLineEdit, QFileDialog
+import cv2
+import JEPGcrypto
+import numpy as np
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QFileDialog
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt
+import sys
+
+
+class FiletypeErrorException(Exception):
+    '''An exception raises when the filetype is wrong.'''
+    def __init__(self, filename):
+        Exception.__init__(self)
+        self.filename = filename
 
 
 class Main(QWidget):
@@ -12,21 +23,21 @@ class Main(QWidget):
         self.title = "JPEG Encrypt & Decrypt"
         self.left = 10
         self.top = 10
-        self.width = 640
-        self.height = 480
+        self.width = 500
+        self.height = 500
         self.imagePath = ''
+        self.keyImagePath = ''
+        self.encryptMessage = ''
         self.initUI()
-    
+
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        # Create widget
         self.label = QLabel(self)
         self.image = QPixmap()
         self.image.loadFromData(base64.b64decode('/9j/4AAQSkZJRgABAQAAAQABAAD//gA+Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2NjIpLCBkZWZhdWx0IHF1YWxpdHkK/9sAQwAIBgYHBgUIBwcHCQkICgwUDQwLCwwZEhMPFB0aHx4dGhwcICQuJyAiLCMcHCg3KSwwMTQ0NB8nOT04MjwuMzQy/9sAQwEJCQkMCwwYDQ0YMiEcITIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy/8AAEQgB9AH0AwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A9/ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKSloAKKSigBaKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKSloAKKKKACiiigAooooAKKKKACiiigBKWiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooASloooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKRmCjmoWkLewoAlLqOpppl9BUVFAD/ADW9BR5re1MooAkEp7inCVT14qGigCyCD0oqsCQeDUqy54bigCSiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKa7hR70M20ZqAkk5NAASScmiijvzQAAEngU8RHucVIu3b8vSnUAR+UvqaXyl96fRQBGYvQ0woy9qnooArUVM0YbkcGoSCDg0APR9vB6VN1qtT43wdp6UATUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUU1zhSaAIpGy3sKbRQBkgUAHbNFT7Rt29qhZSpoAFYqfapwQwyKr0qsVNAFiikBBGRS0AFFFFABTXXcPenUUAVjxxRUkq/xfnUdAE6NuX3p1QRnDY9anoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKSloAKKSigBaSlooAKKKKACiiigAooooAKKSloAKKKKACiiigAooooAKKKKACopT0FS1DL978KAI6kiHJNR1NF938aAJKQgEYNLRQBXZSppKsEAjBqBlKn2oAFYqfapwQRkVWpysVPtQBYopAQRkUtABRRRQAhGVIqvVmq7cOfrQAg4OasVWqwv3B9KAFpaKKACikpaACiiigAooooAKKKKACiiigApKWigApKWigAooooASlpKWgAooooAKKKKAEpaKKACiiigBKWiigBKWiigAooooAKKKKAEpaKKACiiigAooooAKKKKACiiigAqGX79TVDKORQBHU8f3KhqWI8EUASUUUUAFIQCMGlooArspU+1JVggEYNQMpU0ACsVNTggjIqvSqxU+1AFiikBBGRS0AFV3++asVWPJJoAKnT7gqCrAGFAoAWiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKjlGVz6VJSEZGKAK9OQ4b600jBxRQBZopiNuHvT6ACiiigApCARg0tFAFdlKmkqwQCMGoGUqfagAVipqcEEZFV6VWKmgCWQ4X61DTnbcfam0AKoywFWKiiXvUtABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAEcq/xD8aiqzUDptOR0oAaCVORU6sGFQUA4ORQBZoqNZf71PBB6GgBaKKKACkIDDBpaaXUd80AQspU0lOZy30ptABSgbjik6nHep0XaPegBQMDApaKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACjrRRQBC8eOR0plWaY0Yb2NAENFOMbD3pvSgBQ7DuaXe3rTaKAAknqaKKUKT0FACUoBY4Ap6xf3jUgAAwBQAiIF+tOoooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKTGe1LRQA3Yv90UbF9KdRQAgUDoBS0UUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAIzKgyzBR6k4oBDDKkEHuKx/ELFoLe3B5llH+f1FGgTEQzWkh+eBz+X/680Aa4dWYqGBI6gHpTqw9DZWN9eyEKrP949hyf61M3iCzD8LMyZxvCcUAa1MeSOPHmOq5OBuOMmiORJolkjYMjDII71nan9jnvLa2uBKZCcps6c+v5UAalFZ8usWsM0sTlw0fXjqfQUyLXbOWORiXTZ/Cw5P0xQBp0VQstWt76Voow6uozhxjIp13qltZv5bszSf3EGTQBdoqhZatBezmFI5VcDJDqBTLjWrSCUxDfK46iMZxQBpUVTstSgv1dot67Mbt4xj/ADiq8mvWiOQqyyKpwXRflFAGpRTIZUniWWNtyMMg0+gAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigDEv8A9/4hsoeojG8/z/oKr6iTp2rPOvCTxN+eP8cfnWwthGNSa9LsXK7dp6Ci/wBPi1CJUkZl2nIZetAHPTboPDtug4E0hZv6fyFbN+sFpockYC7PL2qPU9j/AFqxJp0Etglo4JRAAD3BHeqkegwhl86eaZE+6jHgUAS6Gjx6TEG4zkgexNUx/pHionqIE/p/ia3AAAABgDoKpw6bHBc3E4kcvNnJP8OfSgDO0SNbm+u71hk7yEJ7Zyf8KTTIkudbvbkqCI3IX6k9f0rVsLGOwgMUbMwLbiW60lhYR2COqOzl23Et1oAyon/4nuoXKjiGNvzAA/oak0FI/s81/MwMjMdzt2Her9rpsVq1w25nM5y278f8arRaDbxyE+bK0ROfKJ4P19aAMuCdjDql8mQzYVT6Bj/+qtLSxDY6J9p4yylmb1PYVMtlaafZzrNITDKfnLe/0rGu4dOt7dlt7h7iR+ETOQue/HegAhLw+HbiUZ3TS7Sfb/OatwWepTacluhtord1HI5JBrRtdPQaRHaTrkFfmHoSc1XTQUUbPtlx5X9wNgUAaFpbLaWkcCkkIOp71PRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFADJIo5kKSIrqezDIqKKxtYH3xW8at6heasUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAH//2Q=='))
         self.label.setPixmap(self.image.scaled(640, 480, Qt.KeepAspectRatio))
-        print(self.image.size())
         horizontalLayout = QHBoxLayout()
         self.loadButton = QPushButton("Load")
         horizontalLayout.addWidget(self.loadButton)
@@ -58,29 +69,105 @@ class Main(QWidget):
     def loadImage(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self, "Load", "", "All Files (*);;JPEG Files(*.jpg)", options=options)
+        fileName, ext = QFileDialog.getOpenFileName(self, "Load", "", "TIFF File(*.tiff);;Text File(*.txt)", options=options)
         if fileName:
-            self.imagePath = fileName
-            self.updateImage()
-            self.encryptButton.setEnabled(True)
-            self.decryptButton.setEnabled(True)
+            if ext == 'Text File(*.txt)':
+                with open(fileName, 'r+') as data:
+                    self.text = data.read()
+                self.loadButton.setEnabled(True)
+                self.encryptButton.setEnabled(False)
+                self.decryptButton.setEnabled(True)
+                self.saveButton.setEnabled(False)
+            else:
+                try:
+                    img = cv2.imread(fileName)
+                    if isinstance(img, type(None)):
+                        raise FiletypeErrorException(self.imagePath)
+                except FiletypeErrorException as ex:
+                    print("[ERROR] Cannot open '{0}'. "
+                          "It might not be an image file.".format(ex.filename))
+                    exit(1)
+                self.imagePath = fileName
+                self.updateImage()
+                self.loadButton.setEnabled(True)
+                self.encryptButton.setEnabled(True)
+                self.decryptButton.setEnabled(False)
+                self.saveButton.setEnabled(False)
+        print("[INFO] Opened!")
 
     def updateImage(self):
-        self.label.setPixmap(QPixmap(self.imagePath).scaled(640, 480, Qt.KeepAspectRatio))
-        print(QPixmap(self.imagePath).size())
+        self.label.setPixmap(QPixmap(self.imagePath).scaled(500, 500, Qt.KeepAspectRatio))
+        # print(QPixmap(self.imagePath).size())
 
     def encryptImage(self):
-        pass
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self, "Load Key Image", "", "TIFF File(*.tiff)", options=options)
+        if fileName:
+            self.keyImagePath = fileName
+            try:
+                img = cv2.imread(self.imagePath)
+                if isinstance(img, type(None)):
+                    raise FiletypeErrorException(self.imagePath)
+                key = cv2.imread(self.keyImagePath)
+                if isinstance(key, type(None)):
+                    raise FiletypeErrorException(self.keyImagePath)
+            except FiletypeErrorException as ex:
+                print("[ERROR] Cannot open '{0}'. "
+                      "It might not be an image file.".format(ex.filename))
+                exit(1)
+            self.encryptMessage = JEPGcrypto.encrypt(img, key)
+            self.loadButton.setEnabled(True)
+            self.encryptButton.setEnabled(True)
+            self.decryptButton.setEnabled(False)
+            self.saveButton.setEnabled(True)
+        print("[INFO] Encrypted!")
 
     def decryptImage(self):
-        pass
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self, "Load Key Image", "", "TIFF Files(*.tiff)", options=options)
+        if fileName:
+            self.keyImagePath = fileName
+            try:
+                key = cv2.imread(self.keyImagePath)
+                if isinstance(key, type(None)):
+                    raise FiletypeErrorException(self.keyImagePath)
+            except FiletypeErrorException as ex:
+                print("[ERROR] Cannot open '{0}'. "
+                      "It might not be an image file.".format(ex.filename))
+                exit(1)
+            self.text = self.text.split(':')
+            row = int(self.text[0])
+            DC_matrix = np.array(ast.literal_eval(self.text[1]))
+            RLencode = np.array(ast.literal_eval(self.text[2]))
+            RLdata = np.array(ast.literal_eval(self.text[3]))
+            self.resultImg = JEPGcrypto.decrypt(row, DC_matrix, RLencode, RLdata, key)
+            self.encryptButton.setEnabled(False)
+            self.decryptButton.setEnabled(True)
+            self.saveButton.setEnabled(True)
+        print("[INFO] Decrypted!")
 
     def saveImage(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getSaveFileName(self,"Save","","All Files (*);;JPEG Files(*.jpg)", options=options)
-        if fileName:
-            print(fileName)
+        if self.encryptButton.isEnabled():
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save", "", "Text File(*.txt)", options=options)
+            if fileName:
+                if fileName[-4:] != '.txt':
+                    fileName = fileName + '.txt'
+                with open(fileName + '.txt', 'w') as output:
+                    output.write(str(self.encryptMessage[0])+':'+
+                                 str(self.encryptMessage[1])+':'+
+                                 str(self.encryptMessage[2])+':'+
+                                 str(self.encryptMessage[3]))
+        elif self.decryptButton.isEnabled():
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save", "", "TIFF File(*.tiff)", options=options)
+            if fileName:
+                if fileName[-5:] != '.tiff':
+                    fileName = fileName + '.tiff'
+                cv2.imwrite(fileName, self.resultImg)
+        print("[INFO] Saved!")
 
 
 if __name__ == "__main__":
