@@ -23,7 +23,7 @@
 `$ python3 JEPGcrypto.py <path/to/orignal_image> <path/to/key_image>`
 ![](photo/readme/2019-06-25-21-19-10.png)
 
-3. Decrypt image.
+3. Decrypt image. Note: It may take at most 5 min to load.
 `$ python3 JEPGcrypto.py <path/to/orignal_image> <path/to/key_image> -d`
 ![](photo/readme/2019-06-25-21-47-25.png)
 
@@ -37,5 +37,26 @@
 ### GUI
 `$ python3 gui.py`
 1. Encrypt Image
-   
+   1. Load the image that wants to encrypt
+      ![](photo/readme/1.png)
+      ![](photo/readme/2.png)
+   2. Click on "Encrypt".
+      ![](photo/readme/3.png)
+   3. Load Key Image.
+      ![](photo/readme/4.png)
+   4. Show the result.
+      ![](photo/readme/5.png)
+   5. Save the result.
+      ![](photo/readme/6.png)
+
 2. Decrypt Image
+   1. Load binary file.  
+      (It may take at most 5 min to load)
+      ![](photo/readme/1.png)
+      ![](photo/readme/7.png)
+   1. Click on "Decrypt".
+      ![](photo/readme/8.png)
+   2. Load Key Image.
+      ![](photo/readme/9.png)
+   3. Save the result.
+      ![](photo/readme/10.png)
