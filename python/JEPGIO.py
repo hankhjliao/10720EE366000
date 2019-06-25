@@ -2,6 +2,7 @@
 
 import os
 import huffman
+import time
 
 uint_to_binstr = (lambda number, size: bin(number)[2:][-size:].zfill(size))
 binstr_flip = (lambda binstr: ''.join(map(lambda c: '0' if c == '1' else '1', binstr)))
@@ -33,6 +34,8 @@ def huffman_table(dc, ac):
 
 
 def write_to_binstr(filepath, row, dc, ac, RLdata):
+    start = time.process_time_ns()
+
     try:
         f = open(filepath, 'wb')
     except FileNotFoundError as e:
@@ -93,6 +96,9 @@ def write_to_binstr(filepath, row, dc, ac, RLdata):
     for i in range(len(out)//8):
         f.write(int(out[i*8:i*8+8], 2).to_bytes(1, 'big'))
     f.close()
+
+    end = time.process_time_ns()
+    print("[INFO] Saved:", end - start, "ns")
 
 
 class JPEGFileReader:
@@ -185,6 +191,8 @@ class JPEGFileReader:
 
 
 def read_image_file(filepath):
+    start = time.process_time_ns()
+
     reader = JPEGFileReader(filepath)
 
     tables = dict()
@@ -250,4 +258,7 @@ def read_image_file(filepath):
                         cells_count += 1
                 ac[k].append(ac_tmp)
                 RLdata[k].append(data)
+
+    end = time.process_time_ns()
+    print("[INFO] Load:", end - start, "ns")
     return (row * 8, dc, ac, RLdata)
