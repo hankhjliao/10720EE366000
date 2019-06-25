@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import sys
 import time
+import JEPGIO
 
 rnd_seed = 2128
 
@@ -94,13 +95,13 @@ def run_len_encode(x):
                     RLdata.append(0)
                     return (RLcode, RLdata)
                 else:
-                    RLcode.append(num_zero * 16 + 1)
+                    RLcode.append(int(num_zero * 16 + 1))
                     RLdata.append(0)
                     num_zero = 0
         else:
             size = np.floor(np.log2(np.abs(x[i]))) + 1
-            RLcode.append(num_zero * 16 + size)
-            RLdata.append(x[i])
+            RLcode.append(int(num_zero * 16 + size))
+            RLdata.append(int(x[i]))
             num_zero = 0
     return (RLcode, RLdata)
 
@@ -122,6 +123,9 @@ def run_len_decode(dc, RLencode, RLdata):
             if i == 0 and j == 0:
                 matrix[0][0] = dc
             else:
+                if RLencode[0] == 0:
+                    matrix = np.reshape(matrix.T, 64)
+                    return matrix
                 (value, RLencode, RLdata) = select_val(RLencode, RLdata)
                 matrix[i][j] = value
     matrix = np.reshape(matrix.T, 64)
@@ -143,16 +147,13 @@ def select_val(RLencode, RLdata):
     value: The value to fill back the matrix.\n
     ac: The remain AC term array.\n
     '''
-    if RLencode[0] == 0:
+    if RLencode[0] >= 16:
         value = 0
+        RLencode[0] = RLencode[0] - 16
     else:
-        if RLencode[0] >= 16:
-            value = 0
-            RLencode[0] = RLencode[0] - 16
-        else:
-            value = RLdata[0]
-            RLdata = RLdata[1:]
-            RLencode = RLencode[1:]
+        value = RLdata[0]
+        RLdata = RLdata[1:]
+        RLencode = RLencode[1:]
     return (value, RLencode, RLdata)
 
 
@@ -187,10 +188,10 @@ def encrypt(img, key_img):
                 key_dct = cv2.dct(key_downsample)
                 encrypt_dct = img_dct * 0.1 + key_dct * 0.9
                 img_qua = np.round(encrypt_dct / quatization_matrix + noise)
-                # zig_zag_code = zig_zag(img_qua)
-                img_qua = np.reshape(img_qua, 64)
-                RLcode, data = run_len_encode(img_qua)
-                DC_matrix[k].append(img_qua[0])
+                zig_zag_code = zig_zag(img_qua)
+                # img_qua = np.reshape(img_qua, 64)
+                RLcode, data = run_len_encode(zig_zag_code)
+                DC_matrix[k].append(zig_zag_code[0])
                 RLencode[k].append(RLcode)
                 RLdata[k].append(data)
 
@@ -224,10 +225,10 @@ def decrypt(row, DC_matrix, RLencode, RLdata, key_img):
                 RLdecode = run_len_decode(
                     DC_cell[i*col//8+j], AC_cell[i*col//8+j],
                     RLdata_cell[i*col//8+j])
-                # decode_temp = zig_zag_inv(RLdecode)
+                decode_temp = zig_zag_inv(RLdecode)
                 key_downsample = key_img[8*i:8*i+8, 8*j:8*j+8, k]
                 key_dct = cv2.dct(key_downsample)
-                decode_temp = np.reshape(RLdecode, (8, 8))
+                # decode_temp = np.reshape(RLdecode, (8, 8))
                 decode_temp = (decode_temp - noise) * quatization_matrix
                 recover_img[8*i:8*i+8, 8*j:8*j+8, k] = cv2.idct((
                     decode_temp - 0.9 * key_dct) * 10)
